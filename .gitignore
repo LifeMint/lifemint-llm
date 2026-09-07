@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+dist/
+build/
+*.egg-info/
+# 任何 vendor.json / key 文件都不进仓
+vendor.json
+*.key
+secrets/

@@ -1,0 +1,17 @@
+# 承重清单（与 HA/relay/vps 同一格式：<测试文件>::<测试名>；scripts/check_load_bearing.py 读 pytest -v 输出核「跑过并通过」）。
+# 进清单的门槛：它是某条裁定或某次事故的唯一守卫。
+# **不在清单里的：test_import_closure 的 ALWAYS_GREEN 那条（A 099 §一.3②：恒绿，装饰不是量具）。**
+
+# 工作包 §一 条件③：签名边界会红；检查器自己能红（规矩 5 内置）
+tests/test_signature_boundary.py::test_public_signatures_use_only_stdlib_and_this_package
+tests/test_signature_boundary.py::test_the_checker_itself_can_go_red
+# 本包只 import 标准库
+tests/test_import_closure.py::test_only_stdlib_is_imported
+# 最终 POST 地址与 lifemint-vps 的表逐字相等（A 103 §一，C 的判别法）
+tests/test_config.py::test_endpoint_urls_match_the_vps_table
+# A 103 §三/§四：json_object 回退计两次；已发出不重试并标 maybe_duplicate；未发出重试一次且过间隔闸
+tests/test_chat_compatible_fake_gateway.py::test_json_object_falls_back_once_and_counts_two_calls
+tests/test_chat_compatible_fake_gateway.py::test_remote_disconnect_is_not_retried_and_is_flagged_maybe_duplicate
+tests/test_chat_compatible_fake_gateway.py::test_connection_refused_is_retried_once_with_pacing
+# Zero Telemetry §七.5：环境变量代理是旁路，本包不读
+tests/test_chat_compatible_fake_gateway.py::test_environment_proxy_is_ignored
