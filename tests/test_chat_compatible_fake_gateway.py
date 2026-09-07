@@ -143,6 +143,13 @@ def test_environment_proxy_is_ignored(gateway, monkeypatch) -> None:
     s.close()
     for var in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy", "ALL_PROXY"):
         monkeypatch.setenv(var, f"http://127.0.0.1:{dead}")
+    # 这台开发机上 Clash 设了 NO_PROXY=localhost,127.0.0.1,…：不清掉它，urllib 对回环目标一律绕过代理，这条守卫就**恒绿**
+    # （2026-09-07 规矩 5 打红时发现：把 ProxyHandler(proxies) 改成 ProxyHandler() 测试照样过）。清掉之后才是真守卫。
+    for var in ("NO_PROXY", "no_proxy"):
+        monkeypatch.delenv(var, raising=False)
+    import urllib.request
+    assert urllib.request.getproxies().get("http", "").endswith(str(dead)), "前提：环境里确实有代理，否则本测试量不到东西"
+    assert not urllib.request.proxy_bypass("127.0.0.1"), "前提：回环没被 NO_PROXY 绕过，否则本测试恒绿"
     c, _ = _client(gateway)
     out = c.complete(MSGS)
     assert out.text == "hi" and len(Gateway.seen) == 1  # 没走环境变量里的代理
