@@ -1,5 +1,76 @@
 # lifemint-llm
 
+A small, optional, network-touching client package: it knows how to send a
+request to a hosted model vendor and bring the answer back. Nothing else.
+
+## Direction (read this first)
+
+```
+lifemint-core   does NOT import lifemint-llm.
+                The reference runtime is dependency-free and does not touch the
+                network; that stays true.
+instances       (a personal instance, the neutral default instance, a hosted
+                space) DO import lifemint-llm, if and when they want to talk to
+                a hosted vendor instead of a local model.
+```
+
+This arrow only points one way. A change that makes `lifemint-core` depend on
+this package is a change to the base's core promise, not a refactor.
+
+## Why it is a separate repository
+
+It could not live in either of the two places that already exist:
+
+- **Not in the base** (`lifemint-core`): the base declares "no network or
+  automatic delivery" in its first paragraph. A vendor HTTP client makes that
+  sentence false.
+- **Not in an instance**: then every other instance either imports someone
+  else's private instance, or reimplements it.
+
+So it is a third thing: optional, network-touching, importable by anyone.
+
+## Scope
+
+**In scope**
+
+- Speaking the wire formats of hosted vendors (OpenAI-compatible chat
+  completions first; others as they are actually tested).
+- Reading a vendor descriptor (format / base URL / model) that the caller
+  hands it.
+
+**Out of scope — deliberately**
+
+- Deciding *what* to say. That is the caller's business.
+- Holding or discovering credentials. Keys are passed in by the caller, which
+  reads them from wherever it keeps secrets. This package never reads a key
+  file, never logs a key, and never puts a key on a command line.
+- Anything that knows about a particular instance. If a public signature in
+  this package ever takes or returns a type owned by an instance, the package
+  has been captured by that instance — that is the boundary to watch, and it
+  is the one an import check cannot see.
+
+## Compatibility is measured, not inherited
+
+"OpenAI-compatible" is a claim about an endpoint, not a guarantee. Gateways
+that speak one route may not speak another; a base URL that is a valid HTTPS
+URL can still be the wrong address. The intended discipline here is to record,
+per endpoint, what has actually been exercised — and to treat everything else
+as unknown rather than as working.
+
+## Status
+
+Early. The API is not stable and there is no usage example in this README on
+purpose: the surface has not settled, and a documented example that drifts from
+the code is worse than no example. Read the source.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE).
+
+---
+
+## 结构与纪律（中文，B 线工作包 V0.1）
+
 **`lifemint-core` 不 import `lifemint_llm`。** 底座保持无网（lifemint-core README：dependency-free, no network）；是实例（darling）与云主机空间（`darling-space@<id>` 的 Core）import 本包。方向只有这一个，不许反过来。
 
 本包是「可选、碰网、谁都能 import」的第三个东西（A 099 裁甲，2026-09-07）：读一份 `vendor.json`（由 lifemint-vps 渲染），按其中的 `format` 调模型厂商。**只用标准库**：`urllib` + `json`，零第三方依赖。
