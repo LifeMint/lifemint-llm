@@ -57,3 +57,17 @@ def test_bad_configs_are_rejected() -> None:
         Config(vendor="x", format="openai-chat-compatible", base_url="https://a/v1", key="  ")
     with pytest.raises(ConfigError):
         Config(vendor="x", format="openai-chat-compatible", base_url="https://a/v1", key="k", proxy_url="socks5://x")
+
+
+def test_effort_is_optional_validated_and_shown_in_describe_but_key_never_is(tmp_path) -> None:
+    """Sponsor 2026-09-09：两级 key 文件带 effort（low/medium/high）。不写 = 不发；写错就拒；describe 里看得见 effort、看不见 key。"""
+    cfg = Config(vendor="openai", format="openai-chat-compatible", base_url="https://api.sensoft.top/v1", key="sk-secret", model="m", effort="high")
+    assert cfg.effort == "high" and " effort=high" in cfg.describe() and "sk-secret" not in cfg.describe()
+    assert Config(vendor="openai", format="openai-chat-compatible", base_url="https://api.sensoft.top/v1", key="k", model="m").effort == ""
+    with pytest.raises(ConfigError, match="unknown effort"):
+        Config(vendor="openai", format="openai-chat-compatible", base_url="https://api.sensoft.top/v1", key="k", model="m", effort="max")
+    p = tmp_path / "vendor.json"
+    p.write_text(json.dumps({"vendor": "openai", "format": "openai-chat-compatible", "base_url": "https://api.sensoft.top/v1", "key": "k", "model": "m", "effort": "medium"}), encoding="utf-8")
+    if os.name != "nt":
+        p.chmod(0o600)
+    assert load_config(str(p)).effort == "medium"

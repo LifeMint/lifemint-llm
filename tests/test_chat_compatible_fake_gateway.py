@@ -42,6 +42,12 @@ class Gateway(http.server.BaseHTTPRequestHandler):
         if Gateway.mode == "disconnect":
             self.connection.close()  # 收到了，不回
             return
+        if Gateway.mode == "reject_effort" and "reasoning_effort" in body:
+            self.send_response(400)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"error":{"message":"Unrecognized request argument: reasoning_effort"}}')
+            return
         if Gateway.mode == "reject_json_object" and "response_format" in body:
             self.send_response(400)
             self.send_header("Content-Type", "application/json")
@@ -160,3 +166,25 @@ def test_two_completions_are_paced(gateway) -> None:
     c.complete(MSGS)
     c.complete(MSGS)
     assert clk.sleeps and clk.sleeps[0] >= 1.99, clk.sleeps
+
+
+def test_effort_is_sent_as_reasoning_effort_and_dropped_once_when_the_gateway_rejects_it(gateway) -> None:
+    """Sponsor 2026-09-09：effort 字段。设了就发 reasoning_effort；网关 400 就去掉重发一次（http_calls=2），与 json_object 同一条回退。"""
+    c, clk = _client(gateway)
+    port = gateway.server_address[1]
+    cfg2 = _HTTPOKConfig(vendor="openai", format="openai-chat-compatible", base_url=f"http://127.0.0.1:{port}/v1", key="sk-test", model="m1", effort="high")
+    c_effort = Client(cfg2, clock=clk.now, sleep=clk.sleep, timeout_s=5)
+    Gateway.mode = "ok"
+    Gateway.seen.clear()
+    out = c_effort.complete(MSGS, max_tokens=8)
+    assert out.http_calls == 1 and Gateway.seen[0]["body"]["reasoning_effort"] == "high"
+    Gateway.mode = "reject_effort"
+    Gateway.seen.clear()
+    out = c_effort.complete(MSGS, max_tokens=8)
+    assert out.text == "hi" and out.http_calls == 2 and len(Gateway.seen) == 2
+    assert "reasoning_effort" in Gateway.seen[0]["body"] and "reasoning_effort" not in Gateway.seen[1]["body"]
+    # 没设 effort：请求体里根本没有这个字段
+    Gateway.mode = "ok"
+    Gateway.seen.clear()
+    c.complete(MSGS, max_tokens=8)
+    assert "reasoning_effort" not in Gateway.seen[0]["body"]

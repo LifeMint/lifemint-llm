@@ -25,6 +25,9 @@ def build_body(cfg: Config, messages: Sequence[Message], *, max_tokens: int, tem
             "max_tokens": max_tokens,
             "temperature": temperature,
         }
+        if cfg.effort:
+            # 推理努力程度：只在这一族发；网关不认（400/422）由 client 去掉重发一次。
+            body["reasoning_effort"] = cfg.effort
         if json_object:
             # A 103 §三①：这家网关要求消息里出现 "json" 字样，否则 400 —— 调用方负责在 prompt 里写；这里只挂字段，400/422 由 Client 回退。
             body["response_format"] = {"type": "json_object"}

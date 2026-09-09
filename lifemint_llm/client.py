@@ -89,10 +89,13 @@ class Client:
         try:
             status, data, headers = self._post(body)
         except HTTPStatusError as exc:
-            if json_object and exc.status in (400, 422) and self._cfg.format == "openai-chat-compatible":
+            picky = [k for k in ("response_format", "reasoning_effort") if k in body]
+            if picky and exc.status in (400, 422) and self._cfg.format == "openai-chat-compatible":
                 # A 103 §三①：网关对 json_object 挑剔 → 去掉 response_format 重发一次。这是第二次真实调用，账记 2。
-                _log.warning("lifemint_llm: %s with response_format; retrying once without it", exc)
-                body.pop("response_format", None)
+                # 2026-09-09：reasoning_effort 同一条回退 —— 不认这个字段的网关也是 400/422。
+                _log.warning("lifemint_llm: %s with %s; retrying once without it", exc, "/".join(picky))
+                for k in picky:
+                    body.pop(k, None)
                 calls = 2
                 status, data, headers = self._post(body)
             else:
